@@ -1,0 +1,32 @@
+=================== PAPERE ===================
+
+ === EPIDEM
+
+https://link.springer.com/content/pdf/10.1007/s11538-006-9077-9.pdf
+
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3857636/
+
+https://www.pnas.org/content/pnas/103/7/2015.full.pdf
+
+https://www.nature.com/articles/nphys560
+
+
+ === NEURAL NET
+
+https://arxiv.org/pdf/1710.10903.pdf
+
+https://arxiv.org/pdf/1807.05560.pdf
+
+=================== ALGOS ===================
+
+https://en.wikipedia.org/wiki/Gillespie_algorithm
+
+https://www.cs.princeton.edu/picasso/mats/matlab/princeton_spring06.pdf
+
+=================== DATA ===================
+
+https://www.apple.com/covid19/mobility
+
+https://www.apple.com/covid19/mobility
+
+http://www.sociopatterns.org/datasets/
