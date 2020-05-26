@@ -177,16 +177,19 @@ class SparseGraph_wutils(SparseGraph):
         :param return_component: Bool
         :return: nx.Graph instance
         '''
-        try:
 
-            self.giant_component = max(nx.connected_component_subgraphs(self.graph), key=len)
+        from networkx.algorithms.components import connected_components
 
-            if (return_component):
+        giant_component_nodes = max(connected_components(self.graph), key=len)
+
+        self.giant_component = self.graph.subgraph(giant_component_nodes).copy()
+
+        if (return_component):
                 return self.giant_component
 
-        except:
+        #except:
 
-            print('NetworkX graph not initialized. Run build_graph method')
+         #   print('NetworkX graph not initialized. Run build_graph method')
 
     #############################################################################
 
@@ -216,3 +219,9 @@ class SparseGraph_wutils(SparseGraph):
         except:
 
             print('NetworkX graph not initialized. Run build_graph method')
+
+    #############################################################################
+
+
+
+

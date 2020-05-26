@@ -1,13 +1,21 @@
+import os
+import networkx as nx
+import pandas as pd
+from scipy import sparse
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 from SIReNet.sparse_graph_wutils import SparseGraph_wutils
 from SIReNet.numba_samplers import Binomial
-from scipy import sparse
-import matplotlib.pyplot as plt
+
+
+
 
 
 
 import numpy as np
 
-class EpdimecisGraph(SparseGraph_wutils):
+class EpidemicsGraph(SparseGraph_wutils):
 
     '''
 
@@ -75,7 +83,7 @@ class EpdimecisGraph(SparseGraph_wutils):
         self.infect_scores_modified_over_time = None
         self.infect_probs_over_time = None
         self.infect_indexes_over_time = []
-        self.infect_over_time = None
+        self.infect_over_time = np.array([])
 
         # recovered insted have variable length, use a list
         self.recovery_probs_over_time = []
@@ -113,13 +121,16 @@ class EpdimecisGraph(SparseGraph_wutils):
         self.infect_indexes_over_time.append(np.argwhere(self.infect).ravel())
 
         self.infect_over_time = np.append(self.infect_over_time, self.infect_number)
+        self.recovery_over_time = np.append(self.recovery_over_time,0)
+        self.death_over_time = np.append(self.death_over_time,0)
 
         print('{} people have been infected'.format(self.infect_number))
 
     #############################################################################
 
     def propagate_infection(self, mu=3, w_comorb=1, w_mitig=1,
-                            p_recovery=0.7, p_death=0.7):
+                            p_recovery=0.7, p_death=0.7,
+                            time_resolution=1):
 
         from scipy import stats
 
@@ -146,7 +157,8 @@ class EpdimecisGraph(SparseGraph_wutils):
 
             #we trasform personal predisposition into a probability through a cdf:
             #higher personal_predisposition = higher probablity of recovery
-            self.recovery_probs = stats.geom.cdf(personal_predisposition, p=p_recovery)
+            # todo patients with negative personal predisposition can never recover, maybe this needs to be addressed
+            self.recovery_probs = stats.geom.cdf(personal_predisposition, p=p_recovery)*time_resolution
 
             recovery_sampler = Binomial(probs=self.recovery_probs)
 
@@ -187,7 +199,8 @@ class EpdimecisGraph(SparseGraph_wutils):
             personal_predisposition = -self.mitigating_factor[infect_indexes] + self.comorbidities_factor[
                 infect_indexes]
 
-            self.death_probs = stats.geom.cdf(personal_predisposition, p=p_death)
+            # todo same problem of recoveries, who has negative predisposition won't die
+            self.death_probs = stats.geom.cdf(personal_predisposition, p=p_death)*time_resolution
 
             death_sampler = Binomial(probs=self.death_probs)
 
@@ -201,7 +214,7 @@ class EpdimecisGraph(SparseGraph_wutils):
             # time series
             self.death_probs_over_time.append(self.death_probs)
             self.death_indexes_over_time.append(new_death_indexes)
-            self.death_over_time = np.append(self.death_over_time, self.recovery)
+            self.death_over_time = np.append(self.death_over_time, self.death_number)
 
             # deaths should be removed from the graph
             remove_from_graph.extend(new_death_indexes)
@@ -223,6 +236,7 @@ class EpdimecisGraph(SparseGraph_wutils):
             #after the graph has been updated, the common_neighbors matrix needs to be recomputed
             self.compute_common_neighbors()
 
+
         ########################################################
         ####################### INFECTIONS #####################
 
@@ -243,7 +257,7 @@ class EpdimecisGraph(SparseGraph_wutils):
         #we trasnform the infection score in a probability through a cdf
         #higher values corresponds to higher infection probabilities
         # todo maybe a different distribution instead of poisson?
-        self.infect_probs = stats.poisson.cdf(k=self.infect_scores_modified, mu=mu)
+        self.infect_probs = stats.poisson.cdf(k=self.infect_scores_modified, mu=mu)*time_resolution
 
         infect_sampler = Binomial(probs=self.infect_probs)
 
@@ -278,7 +292,34 @@ class EpdimecisGraph(SparseGraph_wutils):
 
             self.infect_probs_over_time = np.vstack([self.infect_probs_over_time, self.infect_probs])
 
-        # AGGIUNGI PROBS OVER TIME SAVING QUI
+
+    #############################################################################
+
+    def export_graph(self, giant_component=True):
+
+        if (giant_component):
+            self.build_nx_graph()
+            self.build_giant_component()
+
+            out_adjac = nx.convert_matrix.to_scipy_sparse_matrix(self.giant_component, format='csr')
+            print(os.getcwd()+'/adjacency.npz')
+            sparse.save_npz(os.getcwd()+'/adjacency.npz',out_adjac)
+
+            out_features_indexes = list(self.giant_component.nodes)
+
+            out_comorbidities = self.comorbidities_factor[out_features_indexes]
+            out_mitigating = self.mitigating_factor[out_features_indexes]
+            out_labels = self.infect[out_features_indexes]
+
+            out_df =pd.DataFrame()
+            out_df['comorbidities'] = out_comorbidities
+            out_df['mitigating'] = out_mitigating
+            out_df['labels'] = out_labels
+            out_df.index = out_features_indexes
+
+            out_df.to_csv(os.getcwd()+'/node_features.csv')
+
+        # todo complete with the code for the full graph
 
     #############################################################################
 
@@ -349,6 +390,23 @@ class EpdimecisGraph(SparseGraph_wutils):
         plt.title("Probs distribution")
         plt.show()
 
-        #############################################################################
+    #############################################################################
+
+    def iterations_summary(self):
+
+        summary_df = pd.DataFrame()
+
+        summary_df['iterations'] = list(range(self.iterations))
+        summary_df['infected'] = self.infect_over_time
+        summary_df['recovered'] = np.cumsum(self.recovery_over_time)
+        summary_df['deaths'] = np.cumsum(self.death_over_time)
+
+        susceptible = np.ones(self.iterations)*self.pop_size
+        susceptible = susceptible-summary_df[['infected','recovered','deaths']].sum(axis=1).values
+
+        summary_df['susceptible'] = susceptible
+
+        sns.lineplot(data=summary_df[['infected','recovered','deaths']])
+
 
 
