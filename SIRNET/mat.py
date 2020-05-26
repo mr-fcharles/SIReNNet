@@ -9,6 +9,11 @@ import matplotlib.pyplot as plt
 
 def neighbourhood_weights( network, l, n):
 
+	""" 
+	input: index of central node and index of first neighbours
+	return the weights of the subgraph of the first neighbours of node n
+	"""
+
 	s = l.shape[0]
 
 	w = np.zeros(s)
@@ -27,33 +32,41 @@ def first_neighbours(network, n):
 
 	return np.array(network.getrow(n).nonzero())[1,:]
 
-# crea un network random
 
-def random_network(n_nodes,p):
+def random_network(n_nodes,n_links):
+
+	"""
+	create an erdos reny graph, given the number of nodes and number of links,
+	return its adjagency matrix
+
+	"""
 
 	m = np.zeros((n_nodes,n_nodes))
-	p = 0.35
 
-# se il grafo è indiretto ci si può tenere i link
-# solo della parte triangolare inferiore, se si vuole iterare sulle colonne
+	max_l = n_nodes*(n_nodes-1)/2
+	p = n_links/max_l
 
 	for i in range(n_nodes):
 		for j in range(n_nodes):
 
-			if( np.random.uniform(0,1) < p ):
+			if( np.random.uniform(0,1) > p ):
 				if(i!=j) :
 
 					r = np.random.uniform(0,1)
 					m[i,j] = r
 					m[j,i] = r
 
-# buttalo in una matrice sparsa
-
 	return csr_matrix(m)
 
 
 
-def scale_free_network(n_nodes):
+def scale_free_network(n_nodes): 
+
+	"""
+	returns the adjagency matrix of a scale free network
+	the network is undirected and weighted
+
+	"""
 
 	m = np.zeros((n_nodes,n_nodes))
 	
@@ -71,14 +84,8 @@ def scale_free_network(n_nodes):
 
 			l, k = rows[i], columns[i]
 
-			nn_a = first_neighbours(A,l).shape[0]
-			nn_b = first_neighbours(A,k).shape[0]
-			nn = abs(nn_a + nn_b )
-
-			r  = np.random.exponential( scale=1/nn)
+			r  = np.random.uniform(0,1)
 			m[l,k] = r
 			m[k,l] = r
-
-# buttalo in una matrice sparsa
 
 	return csr_matrix(m)

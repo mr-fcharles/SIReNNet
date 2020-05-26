@@ -1,5 +1,18 @@
 import numpy as np
 
+"""
+This function returns a matrix with the initial population for each node compartment
+Tha population matrix is initialized at zero, and times columns is not changed anymore
+
+a : adresses of non-infected cities
+
+for loop1: initialize the non infected cities 
+           sampling susceptible compartment from a uniform distribution
+
+for loop2: initialize epicenter of epidemics
+           with a mean percentage of infected people about 40%
+
+"""
 
 def RND_State0(epicenter, Communities, DOF, stats_parameters):
 	
@@ -19,7 +32,6 @@ def RND_State0(epicenter, Communities, DOF, stats_parameters):
 
 		population_size=np.random.randint(MeanP - DevP, MeanP + DevP)
 		S[i,0] = population_size
-		S[i,3] = np.random.uniform(0,10e-6)
 
 # infected cities population
 	for i in epicenter:
@@ -29,8 +41,6 @@ def RND_State0(epicenter, Communities, DOF, stats_parameters):
 
 		S[i,0] = int((1-infected_percentage)*population_size)
 		S[i,1] = population_size - S[i,0]
-
-		S[i,3] = np.random.uniform(0,10e-6)
 
 
 	return S

@@ -16,8 +16,9 @@ class System:
 		self.z = z
 
 	# nel momento in cui è implementata quella a più nodi questa è inutile, appena finisci implementaz elimina
-	def evolve_node( self, m, e ): 
+	def evolve_node( self, m, e ):
 		self.z[m] = np.append(self.z[m],e)
+		#self.z[m] = np.concatenate((self.z[m],e))
 		return
 
 	# lista con indici nodi da evolvere
@@ -25,15 +26,6 @@ class System:
 	# occhio: tirare fuori omega e poi far evolvere tutto 
 	# devono avere in ingresso la stessa lista dei nodi primi vinici
 	# la lista la creo una volta sola nell'evoluzione
-	def evolve_mult_nodes(self,ngb,x): # elimina!
-
-		i=0
-
-		for n in ngb:
-			self.z[n] = np.append(x[i])
-			i+=1
-
-		return
 
 	def instant_state( self, m ):
 
@@ -65,19 +57,6 @@ class System:
 
 		return p
 
-	def instant_population( self ):
-
-		d = self.DOF
-		N = self.N
-
-		population = np.zeros(d-1)
-		P = self.instant_full_state()
-
-		for i in range(N):
-			population += P[i,:-1]
-
-		return population
-
 # devo ritornare l'ultimo valore di ciascun array!
 	def all_local_times( self  ):
 		
@@ -93,7 +72,7 @@ class System:
 
 		return p
 
-	def local_time( self, m , t ):
+	def local_time( self, m ):
 		
 		d = self.DOF
 		#tau = self.z[m][d*t:d*(t+1)][3]
@@ -118,3 +97,7 @@ class System:
 	def dof(self):
 
 		return self.DOF
+
+	def Nnodes(self):
+
+		return self.N

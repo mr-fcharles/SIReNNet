@@ -51,7 +51,6 @@ def Transport( V, F, W ): # Transport(m, neibgourhood, pesi neib)
 
 			OM[j,i] = xi_in[j] - xi_out
 
-
 	return OM
 
 
