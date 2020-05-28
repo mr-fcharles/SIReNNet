@@ -1,6 +1,5 @@
 .ipynb_checkpoints
 
-experiments.ipynb
 
 *.pyc
 */*/*/__pycache__/
