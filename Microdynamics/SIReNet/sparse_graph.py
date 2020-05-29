@@ -59,7 +59,7 @@ class SparseGraph(object):
 
     #########################################################
 
-    def create_families(self, lambda_mean=2):
+    def create_families(self, lambda_mean=2.4):
         '''
         This method is used to populate the sparse adjacency matrix of the
         graph with families (i.e. many small cliques)

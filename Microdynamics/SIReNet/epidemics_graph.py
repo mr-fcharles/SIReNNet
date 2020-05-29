@@ -158,7 +158,10 @@ class EpidemicsGraph(SparseGraph_wutils):
             #we trasform personal predisposition into a probability through a cdf:
             #higher personal_predisposition = higher probablity of recovery
             # todo patients with negative personal predisposition can never recover, maybe this needs to be addressed
-            self.recovery_probs = stats.geom.cdf(personal_predisposition, p=p_recovery)*time_resolution
+            random_effects_recovery = np.random.poisson(1,len(personal_predisposition))
+            self.recovery_probs = stats.geom.cdf(personal_predisposition*self.iterations+random_effects_recovery,
+                                                 p=p_recovery) * time_resolution
+            #self.recovery_probs = stats.geom.cdf(personal_predisposition, p=p_recovery)*time_resolution
 
             recovery_sampler = Binomial(probs=self.recovery_probs)
 
@@ -200,7 +203,10 @@ class EpidemicsGraph(SparseGraph_wutils):
                 infect_indexes]
 
             # todo same problem of recoveries, who has negative predisposition won't die
-            self.death_probs = stats.geom.cdf(personal_predisposition, p=p_death)*time_resolution
+            random_effects_death = np.random.poisson(1, len(personal_predisposition))
+            self.death_probs = stats.geom.cdf(personal_predisposition * self.iterations + random_effects_death,
+                                                 p=p_death) * time_resolution
+            #self.death_probs = stats.geom.cdf(personal_predisposition, p=p_death)*time_resolution
 
             death_sampler = Binomial(probs=self.death_probs)
 
