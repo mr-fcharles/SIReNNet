@@ -4,11 +4,10 @@ import numpy as np
 
 
 @njit(parallel=True)
-def _link_sampler(links_to_add, dir_sampler, multi_sampler,get_richer_step=0.1):
+def _link_sampler(links_to_add, dir_sampler,get_richer_step=0.1):
     """
     Functions compiled JIT used to draw the edges to connect. Iternal use
     """
-
 
     start_point = np.empty(links_to_add)
     end_point = np.empty(links_to_add)
@@ -19,19 +18,26 @@ def _link_sampler(links_to_add, dir_sampler, multi_sampler,get_richer_step=0.1):
         pdist = dir_sampler.sample()
 
         # use the sampled distrib to draw the node indexes to connect
-        multi_sampler.set_pvals(pdist)
+        #multi_sampler_internal.set_pvals(pdist)
 
-        # extract the two indeces of the graph
+        # extract the two indexes of the graph
         vertex_a = 0
         vertex_b = 0
 
         while vertex_a == vertex_b:
-            vertex_a, vertex_b = multi_sampler.sample()
+
+            draw1 = np.random.multinomial(n=1, pvals=pdist)
+            # multinomial draws between 1 and len(self.pdist), our indexes start from 0 and go up to len(self.pdist)-1
+            vertex_a = np.argwhere(draw1)[0][0] - 1
+
+            draw2 = np.random.multinomial(n=1, pvals=pdist)
+            vertex_b = np.argwhere(draw2)[0][0] - 1
 
         start_point[i] = vertex_a
         end_point[i] = vertex_b
 
         # update weights on extracted vertices in order to make new connections more likely
-        dir_sampler.update((vertex_a, vertex_b), get_richer_step)
+        dir_sampler.alpha[vertex_a] += get_richer_step
+        dir_sampler.alpha[vertex_b] += get_richer_step
 
     return start_point, end_point

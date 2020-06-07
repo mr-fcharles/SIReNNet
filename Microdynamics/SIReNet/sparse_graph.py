@@ -3,9 +3,12 @@ import warnings
 from scipy.sparse import dok_matrix
 
 from SIReNet.numba_samplers import Dirichlet
-from SIReNet.numba_samplers import Multinomial
-#from SIReNet.numba_samplers import Multinomial_with_randomization
 from SIReNet.numba_functions import _link_sampler
+from SIReNet.utils import _adj_writer
+
+from joblib import Parallel,delayed
+
+
 
 class SparseGraph(object):
     '''
@@ -119,98 +122,50 @@ class SparseGraph(object):
             dir_sampler = Dirichlet(size=self.pop_size, alpha=1)
             pdist = dir_sampler.sample()
 
-            multi_sampler = Multinomial(size=1, pdist=pdist)
-            #multi_sampler = Multinomial_with_randomization(size=1, pdist=pdist,randomization=0)
-            # todo - understand why adding randomization freezes the kernel in jit compilation
-
-            _link_sampler(1, dir_sampler, multi_sampler)
+            _link_sampler(1, dir_sampler)
 
     #######################################################
 
-    def add_links(self, get_richer_step=0.1, links_to_add='default'):
-            '''
-            Method used to add randomly to the graph links with preferential attachment
 
-            :param get_richer_step: (real number > 0)  The higher is this parameter, the heavier
-            are the degree distribution tails
-            :param links_to_add: (integer > 0) Number of edges to add to the graph with this procedure
-            :return: Adds drawn link to self.adjacency
-            '''
+    def add_links(self, get_richer_step=0.1, links_to_add='default',n_jobs=None):
+        '''
+        Method used to add randomly to the graph links with preferential attachment
 
-            if (links_to_add == 'default'):
-                links = self.pop_size * 3
+        :param get_richer_step: (real number > 0)  The higher is this parameter, the heavier
+        are the degree distribution tails
+        :param links_to_add: (integer > 0) Number of edges to add to the graph with this procedure
+        :return: Adds drawn link to self.adjacency
+        '''
 
-            else:
-                links = links_to_add
+        if (links_to_add == 'default'):
+            links = self.pop_size * 3
 
-            #initialize the dirichlet sampler and draw the first distrib
-            dir_sampler = Dirichlet(size=self.pop_size, alpha=1)
-            pdist = dir_sampler.sample()
+        else:
+            links = links_to_add
 
-            #initialiaze the multinomial sampler and set the drawn distrib
-            multi_sampler = Multinomial(size=1, pdist=pdist)
-            #multi_sampler = Multinomial_with_randomization(size=1, pdist=pdist,randomization=0)
+        # initialize the dirichlet sampler and draw the first distrib
+        dir_sampler = Dirichlet(size=self.pop_size, alpha=1)
 
-            added = 0
+        edge_a, edge_b = _link_sampler(links, dir_sampler, get_richer_step)
 
-            #initialize the vectors in which we will store the nodes to connect
-            edge_a = np.empty(links, dtype=np.int32)
-            edge_b = np.empty(links, dtype=np.int32)
-
-
-            while (added < links):
-
-                if (added == 0):
-
-                    edge_a, edge_b = _link_sampler(links - added, dir_sampler, multi_sampler,get_richer_step)
-
-                    edge_a = edge_a.astype(np.int32)
-                    edge_b = edge_b.astype(np.int32)
-
-                #apprently some times numba classes incur in numerical errors
-                #the code below takes care of redrawing instable observations
-
-                else:
-
-                    warnings.warn('Numerical error occurred, remaning links {}'.format(links - added))
-
-                    # print('Numerical occurred, remaining links:',links-added)
-
-                    temp_a, temp_b = _link_sampler(links - added, dir_sampler, multi_sampler)
-
-                    edge_a = np.append(edge_a, temp_a)
-                    edge_b = np.append(edge_b, temp_b)
-
-                    added += len(temp_a)
-
-                # first filter
-                filter1 = np.where(np.abs(edge_a.astype(np.int64)) > self.pop_size, False, True)
-
-                edge_a = edge_a[filter1]
-                edge_b = edge_b[filter1]
-
-                # second filter
-                filter2 = np.where(np.abs(edge_b.astype(np.int64)) > self.pop_size, False, True)
-
-                edge_a = edge_a[filter2]
-                edge_b = edge_b[filter2]
-
-                if (added == 0):
-                    added += len(edge_a)
-
-            #fianlly we insert in the adjacency matrix the obtained links
+        if(n_jobs is None):
+        # fianally we insert in the adjacency matrix the obtained links
 
             for j in range(links):
                 # print(edge_a[j],edge_b[j])
-                row = edge_a[j] #- 1
-                column = edge_b[j] #- 1
+                row = edge_a[j]  # - 1
+                column = edge_b[j]  # - 1
 
                 self.adjacency[row, column] = True
                 self.adjacency[column, row] = True
 
-            #we remove self loops
-            self.adjacency.setdiag(0)
+        # todo not very fast, should undestand why
+        else:
+            Parallel(n_jobs=n_jobs, backend='threading')(
+                delayed(_adj_writer)(self.adjacency, in_node, out_node) for in_node in edge_a for out_node in edge_b)
 
+        # we remove self loops
+        self.adjacency.setdiag(0)
 
     #############################################################################
 

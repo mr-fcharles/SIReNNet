@@ -63,6 +63,14 @@ class MaskSampler(object):
 
         return train_mask,validation_mask,test_mask
 
+def _adj_writer(adj,in_index,out_index):
+
+    adj[in_index,out_index] = True
+    adj[out_index,in_index] = True
+
+
+
+
 
 
 
